@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import { cachedForecast, fetchForecast, isStale, type Forecast } from './lib/api'
 import { analyse } from './lib/score'
 import { fmtTime, localDate } from './lib/time'
-import { IconClock, IconFishHook, IconRefresh, IconWifiOff } from '@tabler/icons-preact'
+import { IconClock, IconFishHook, IconHeart, IconRefresh, IconWifiOff } from '@tabler/icons-preact'
+import { ShareButton } from './components/share'
 import { DayView, Home, RigsView, SpotView, type Region } from './components/views'
 
 const REGION_KEY = 'masyed-region'
@@ -88,6 +89,7 @@ export function App() {
             <IconRefresh size={18} stroke={2} class={loading ? 'spin' : undefined} />
             {loading ? 'قاعد نحدّث…' : 'حدّث'}
           </button>
+          <ShareButton />
         </div>
       </header>
 
@@ -125,7 +127,10 @@ export function App() {
             <IconFishHook size={16} stroke={2} /> كل التركيبات
           </a>
         </p>
-        <p>التوقعات من Open-Meteo، والحوت والطعم من FishBase ومواقع صيد تونسية. البحر يتبدّل: ديما شوف بعينك قبل ما تدخل.</p>
+        <p>البحر يتبدّل: ديما شوف بعينك قبل ما تدخل.</p>
+        <p class="dedication">
+          <IconHeart size={16} stroke={2} /> عملها أمير لبوه سي مختار. ربي يجيب الخير في كل خرجة.
+        </p>
       </footer>
     </div>
   )

@@ -376,3 +376,32 @@ button { font: inherit; color: inherit; }
 
 .spot-top h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .badge { display: inline-flex; align-items: center; gap: 3px; font: 500 12px/1 var(--body); padding: 4px 8px; border-radius: 999px; background: var(--shoal); color: var(--ink-soft); }
+
+/* ---------- share sheet ---------- */
+.status { flex-wrap: wrap; }
+.share-btn { background: #f2b705; color: #0e2a3b; }
+.share-sheet {
+  border: 0;
+  padding: 0;
+  width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  border-radius: 20px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+.share-sheet::backdrop { background: rgba(8, 24, 33, 0.6); }
+.share-body { padding: 18px; display: grid; justify-items: center; gap: 12px; text-align: center; }
+.share-head { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+.share-head h2 { font-size: 22px; }
+.icon-btn { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; border: 1.5px solid var(--line); background: transparent; cursor: pointer; }
+.qr { border-radius: 14px; border: 1.5px solid var(--line); max-width: 100%; height: auto; }
+.share-hint { font-size: 15px; color: var(--ink-soft); }
+.share-url { font-size: 13px; color: var(--ink-soft); word-break: break-all; }
+.share-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.share-actions .btn { font-size: 16px; }
+.btn.whatsapp { background: #1f8f4e; color: #fff; }
+button.btn { border: 0; cursor: pointer; font: inherit; font-weight: 700; }
+button.btn.ghost { border: 1.5px solid var(--line); }
+.dedication { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; color: var(--ink); font-weight: 500; }
+.dedication svg { color: var(--flare); flex: none; }
