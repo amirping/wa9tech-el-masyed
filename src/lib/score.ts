@@ -125,7 +125,7 @@ export interface WindowResult {
   baits: BaitId[]
   rig: RigId
   sinker: string
-  notes: string[]
+  notes: Note[]
   cond: {
     effHs: number
     hs: number
@@ -245,7 +245,10 @@ function scoreHour(ctx: Context, i: number, win: WindowId): HourScore {
   else if (h.rain > 4) score *= 0.7
   if (afterStorm) score += 0.08
 
-  const danger = effHs >= 2.5 || h.gust >= 65 || THUNDER.has(h.code)
+  // Rocks are less forgiving than sand: lower wave limit, and long swells throw surprise waves.
+  const rock = ctx.spot.bottom === 'rock'
+  const danger =
+    effHs >= (rock ? 1.8 : 2.5) || (rock && h.tp >= 9 && effHs >= 1.2) || h.gust >= 65 || THUNDER.has(h.code)
   if (danger) score = Math.min(score, 0.12)
   return { t: h.t, score: clamp(score), danger, effHs, window: win }
 }
@@ -343,6 +346,12 @@ function pickRig(fish: FishPick[], effHs: number, win: WindowId): RigId {
   return top.rig
 }
 
+export type NoteKind = 'danger' | 'rock' | 'sea' | 'calm' | 'wind' | 'pressure' | 'solunar' | 'moon' | 'rain' | 'estuary'
+export interface Note {
+  k: NoteKind
+  t: string
+}
+
 function windowNotes(
   ctx: Context,
   span: WindowSpan,
@@ -350,27 +359,33 @@ function windowNotes(
   afterStorm: boolean,
   danger: boolean,
   hs: Hour[],
-): string[] {
-  const n: string[] = []
-  if (hs.some((h) => THUNDER.has(h.code))) n.push('عجاجة ورعد: ما تقعدش بالقصبة في الشط')
-  else if (danger) n.push('البحر هايج برشا ولا الريح قوية: خطر، ما تمشيش')
-  n.push(`${seaText(c.effHs)} (موج ${c.effHs.toFixed(1)} م${c.tp ? ` كل ${Math.round(c.tp)} ثواني` : ''})`)
-  if (afterStorm) n.push('البحر قاعد يهدا بعد التقليبة: الحوت يخرج ياكل')
+): Note[] {
+  const n: Note[] = []
+  if (hs.some((h) => THUNDER.has(h.code))) n.push({ k: 'danger', t: 'عجاجة ورعد: ما تقعدش بالقصبة في الشط' })
+  else if (danger && ctx.spot.bottom === 'rock')
+    n.push({ k: 'danger', t: 'الموج قوي على الصخر: خطر، ما تطلعش للصخر اليوم' })
+  else if (danger) n.push({ k: 'danger', t: 'البحر هايج برشا ولا الريح قوية: خطر، ما تمشيش' })
+  else if (ctx.spot.bottom !== 'sand' && (c.effHs >= 1 || c.tp >= 8))
+    n.push({ k: 'rock', t: 'على الصخر: رد بالك من الموجة الكبيرة، ما تعطيش ظهرك للبحر' })
+  n.push({ k: 'sea', t: `${seaText(c.effHs)} (موج ${c.effHs.toFixed(1)} م${c.tp ? ` كل ${Math.round(c.tp)} ثواني` : ''})` })
+  if (afterStorm) n.push({ k: 'calm', t: 'البحر قاعد يهدا بعد التقليبة: الحوت يخرج ياكل' })
   const rel = c.windRel === 'on' ? 'جاية من البحر' : c.windRel === 'off' ? 'جاية من البر' : 'على الجنب'
-  n.push(`ريح ${compass(c.windDir)} ${Math.round(c.wind)} كم/س، ${rel}${c.gust > 40 ? `، الرّفّات توصل ${Math.round(c.gust)}` : ''}`)
-  if (c.pressureTrend < -0.8 && c.pressureTrend >= -3) n.push('البارومتر هابط بشويّة: الحوت ياكل')
-  else if (c.pressureTrend > 2) n.push('البارومتر طالع بالزربة: الحوت يتقلّق')
+  n.push({
+    k: 'wind',
+    t: `ريح ${compass(c.windDir)} ${Math.round(c.wind)} كم/س، ${rel}${c.gust > 40 ? `، الرّفّات توصل ${Math.round(c.gust)}` : ''}`,
+  })
+  if (c.pressureTrend < -0.8 && c.pressureTrend >= -3) n.push({ k: 'pressure', t: 'البارومتر هابط بشويّة: الحوت ياكل' })
+  else if (c.pressureTrend > 2) n.push({ k: 'pressure', t: 'البارومتر طالع بالزربة: الحوت يتقلّق' })
   const majors = ctx.ev.majors.filter((t) => t >= span.start && t < span.end)
-  if (majors.length) n.push(`وقت القمرة القوي: ${majors.map(fmtTime).join(' و ')}`)
+  if (majors.length) n.push({ k: 'solunar', t: `وقت القمرة القوي: ${majors.map(fmtTime).join(' و ')}` })
   if (span.id === 'lil') {
     const { illum } = moonPhase(span.start + 3 * HOUR)
-    if (illum < 0.15) n.push('ليلة ظلمة (القمرة غايبة)')
-    else if (illum > 0.95) n.push('القمرة كاملة: الضوء قوي')
-    else n.push(`القمرة ${Math.round(illum * 100)}%`)
+    const t = illum < 0.15 ? 'ليلة ظلمة (القمرة غايبة)' : illum > 0.95 ? 'القمرة كاملة: الضوء قوي' : `القمرة ${Math.round(illum * 100)}%`
+    n.push({ k: 'moon', t })
   }
-  if (c.rain > 0.5) n.push(`مطر ${c.rain.toFixed(1)} ملم`)
+  if (c.rain > 0.5) n.push({ k: 'rain', t: `مطر ${c.rain.toFixed(1)} ملم` })
   const i0 = ctx.idx.get(Math.ceil(span.start / HOUR) * HOUR)
-  if (ctx.spot.estuary && i0 != null && rainLast(ctx, i0, 72) > 8) n.push('الوادي هابط بعد المطر: القاروص يقرّب للفم')
+  if (ctx.spot.estuary && i0 != null && rainLast(ctx, i0, 72) > 8) n.push({ k: 'estuary', t: 'الوادي هابط بعد المطر: القاروص يقرّب للفم' })
   return n
 }
 
@@ -427,7 +442,7 @@ function spotDay(ctx: Context, series: SpotSeries, date: string, now: number): S
     strip,
     sunrise: series.sun[date].rise,
     sunset: series.sun[date].set,
-    afterStorm: windows.some((w) => w.notes.some((x) => x.includes('التقليبة'))),
+    afterStorm: windows.some((w) => w.notes.some((x) => x.k === 'calm')),
   }
 }
 

@@ -29,7 +29,7 @@ export interface Forecast {
   series: Record<string, SpotSeries>
 }
 
-const CACHE_KEY = 'nhawet-forecast-v1'
+const CACHE_KEY = 'masyed-forecast-v1'
 const MAX_AGE = 2 * 3_600_000
 
 const WEATHER_VARS = [

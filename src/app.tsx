@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'preact/hooks'
 import { cachedForecast, fetchForecast, isStale, type Forecast } from './lib/api'
 import { analyse } from './lib/score'
 import { fmtTime, localDate } from './lib/time'
-import { DayView, Home, SpotView, type Region } from './components/views'
+import { IconClock, IconFishHook, IconRefresh, IconWifiOff } from '@tabler/icons-preact'
+import { DayView, Home, RigsView, SpotView, type Region } from './components/views'
 
-const REGION_KEY = 'nhawet-region'
+const REGION_KEY = 'masyed-region'
 
 function readRegion(): Region {
   try {
@@ -72,12 +73,19 @@ export function App() {
     <div class="shell">
       <header class="masthead">
         <a href="#/" class="brand">
-          <h1>وقتاش نحوّت؟</h1>
+          <h1>
+            <IconFishHook size={30} stroke={2} class="brand-ico" /> وقتاش المصيد
+          </h1>
           <p>الصيد بالقصبة في الشط، من كاب نيقرو لهرقلة</p>
         </a>
         <div class="status">
-          {forecast && <span>آخر نشرة {fmtTime(forecast.fetchedAt)}</span>}
+          {forecast && (
+            <span class="updated">
+              <IconClock size={16} stroke={2} /> آخر نشرة {fmtTime(forecast.fetchedAt)}
+            </span>
+          )}
           <button class="refresh" onClick={refresh} disabled={loading}>
+            <IconRefresh size={18} stroke={2} class={loading ? 'spin' : undefined} />
             {loading ? 'قاعد نحدّث…' : 'حدّث'}
           </button>
         </div>
@@ -86,6 +94,7 @@ export function App() {
       <main>
         {error && (
           <p class="banner" role="alert">
+            <IconWifiOff size={20} stroke={2} />
             {forecast
               ? `ما نجمتش نحدّث (ما فماش إنترنت؟). هاذي نشرة ${fmtTime(forecast.fetchedAt)}.`
               : 'ما نجمتش نجيب الطقس. ثبّت في الإنترنت وعاود.'}
@@ -98,7 +107,9 @@ export function App() {
           </button>
         )}
 
-        {days.length > 0 &&
+        {hash === '#/rigs' ? (
+          <RigsView />
+        ) : days.length > 0 &&
           (spot && day ? (
             <SpotView key={`${day.date}-${spot.spot.id}`} day={day} spot={spot} today={today} now={now} />
           ) : day ? (
@@ -109,6 +120,11 @@ export function App() {
       </main>
 
       <footer class="foot">
+        <p>
+          <a href="#/rigs" class="foot-link">
+            <IconFishHook size={16} stroke={2} /> كل التركيبات
+          </a>
+        </p>
         <p>التوقعات من Open-Meteo، والحوت والطعم من FishBase ومواقع صيد تونسية. البحر يتبدّل: ديما شوف بعينك قبل ما تدخل.</p>
       </footer>
     </div>

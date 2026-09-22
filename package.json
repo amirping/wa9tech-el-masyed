@@ -1,5 +1,5 @@
 {
-  "name": "nhawet",
+  "name": "wa9tech-el-masyed",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -12,11 +12,14 @@
   "dependencies": {
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
     "@fontsource/reem-kufi": "^5.3.0",
+    "@tabler/icons-preact": "^3.48.0",
+    "leaflet": "^1.9.4",
     "preact": "^10.29.8",
     "suncalc": "^2.0.2"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
+    "@types/leaflet": "^1.9.22",
     "@types/suncalc": "^1.9.2",
     "@vite-pwa/assets-generator": "^1.0.4",
     "typescript": "^7.0.2",

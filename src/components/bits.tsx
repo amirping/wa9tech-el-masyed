@@ -1,4 +1,5 @@
 import type { HourScore } from '../lib/score'
+import { IconSunrise, IconSunset } from '@tabler/icons-preact'
 import { STAR_WORDS } from '../lib/text'
 import { HOUR, fmtTime } from '../lib/time'
 
@@ -61,9 +62,13 @@ function sonarColor(score: number): string {
   return `rgb(${RAMP[RAMP.length - 1][1]})`
 }
 
+/** Bar height for a score: never fully flat so every hour stays visible. */
+const barHeight = (score: number) => Math.round(18 + 82 * Math.min(1, Math.max(0, (score - 0.2) / 0.7)))
+
 /**
- * The "sonar" strip: one cell per hour from 04:00 to 04:00, brighter = better.
+ * The "sonar" strip: one bar per hour from 04:00 to 04:00. Taller and more yellow = better.
  * Runs right-to-left like the rest of the page, with sunrise and sunset marked.
+ * A legend always sits underneath so it reads on its own.
  */
 export function Strip({ hours, sunrise, sunset, now }: { hours: HourScore[]; sunrise: number; sunset: number; now?: number }) {
   if (!hours.length) return null
@@ -72,35 +77,49 @@ export function Strip({ hours, sunrise, sunset, now }: { hours: HourScore[]; sun
   const pos = (t: number) => `${(((t - start) / span) * 100).toFixed(2)}%`
   const showNow = now != null && now >= start && now < start + span
   return (
-    <div class="sonar" aria-hidden="true">
-      <div class="sonar-track">
-        {hours.map((h) => (
-          <span
-            key={h.t}
-            class={h.danger ? 'cell danger' : 'cell'}
-            style={h.danger ? undefined : { background: sonarColor(h.score) }}
-          />
-        ))}
-        <span class="sonar-mark sun" style={{ insetInlineStart: pos(sunrise) }} />
-        <span class="sonar-mark sun" style={{ insetInlineStart: pos(sunset) }} />
-        {showNow && <span class="sonar-mark now" style={{ insetInlineStart: pos(now!) }} />}
+    <figure class="strip">
+      <div class="sonar" aria-hidden="true">
+        <div class="sonar-track">
+          {hours.map((h) => (
+            <span key={h.t} class="slot">
+              <span
+                class={h.danger ? 'bar danger' : 'bar'}
+                style={h.danger ? { height: '100%' } : { height: `${barHeight(h.score)}%`, background: sonarColor(h.score) }}
+              />
+            </span>
+          ))}
+          <span class="sonar-mark sun" style={{ insetInlineStart: pos(sunrise) }} />
+          <span class="sonar-mark sun" style={{ insetInlineStart: pos(sunset) }} />
+          {showNow && <span class="sonar-mark now" style={{ insetInlineStart: pos(now!) }} />}
+        </div>
+        <div class="sonar-ticks">
+          {[4, 8, 12, 16, 20, 24].map((h) => (
+            <span key={h} style={{ insetInlineStart: pos(start + (h - 4) * HOUR) }}>
+              {h === 24 ? '00' : String(h).padStart(2, '0')}
+            </span>
+          ))}
+        </div>
       </div>
-      <div class="sonar-ticks">
-        {[4, 8, 12, 16, 20, 24].map((h) => (
-          <span key={h} style={{ insetInlineStart: pos(start + ((h - 4) * HOUR)) }}>
-            {h === 24 ? '00' : String(h).padStart(2, '0')}
+      <figcaption class="strip-legend">
+        <span class="key">
+          <span class="key-bars" aria-hidden="true">
+            {[0.25, 0.5, 0.68, 0.8, 0.9].map((v) => (
+              <i key={v} style={{ height: `${barHeight(v) * 0.16}px`, background: sonarColor(v) }} />
+            ))}
           </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-export function StripLegend() {
-  return (
-    <p class="legend">
-      <span class="legend-swatch" /> كل خانة ساعة، من 4 الصباح حتى 4 الليل. كل ما تصفار، كل ما الوقت خير. الخط الأبيض: طلوع وغروب الشمس.
-    </p>
+          كل ما أطول وأصفر، كل ما خير
+        </span>
+        <span class="key">
+          <IconSunrise size={16} stroke={2} /> {fmtTime(sunrise)}
+          <IconSunset size={16} stroke={2} /> {fmtTime(sunset)}
+          {hours.some((h) => h.danger) && (
+            <>
+              <i class="key-danger" aria-hidden="true" /> خطر
+            </>
+          )}
+        </span>
+      </figcaption>
+    </figure>
   )
 }
 

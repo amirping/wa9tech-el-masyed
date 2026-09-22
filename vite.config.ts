@@ -11,8 +11,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'favicon.ico', 'apple-touch-icon-180x180.png'],
       manifest: {
-        name: 'وقتاش نحوّت؟',
-        short_name: 'نحوّت',
+        name: 'وقتاش المصيد',
+        short_name: 'المصيد',
         description: 'أحسن أيام وبلايص الصيد بالقصبة في الشط',
         lang: 'ar',
         dir: 'rtl',
@@ -30,6 +30,18 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+        // Keep map tiles he has already seen, so the spot map still shows on the beach without signal.
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/tile\.openstreetmap\.org\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'osm-tiles',
+              expiration: { maxEntries: 400, maxAgeSeconds: 30 * 24 * 3600 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],
