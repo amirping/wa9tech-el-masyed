@@ -1,0 +1,213 @@
+import type { Bottom } from './spots'
+import type { BaitId, RigId } from './tackle'
+
+export type WindowId = 'fajr' | 'nhar' | 'maghreb' | 'lil'
+export type SeaState = 'calm' | 'moderate' | 'rough'
+
+export interface Species {
+  id: string
+  /** Tunisian name first (FishBase "Tunisia" entry where one exists), then the other common name. */
+  name: string
+  sci: string
+  /** Activity by month, Jan..Dec, 0–1. */
+  months: number[]
+  /** Sea temperature °C: [min, optimal from, optimal to, max]. */
+  temp: [number, number, number, number]
+  sea: Record<SeaState, number>
+  time: Record<WindowId, number>
+  bottom: Record<Bottom, number>
+  baits: BaitId[]
+  rig: RigId
+  /** How often shore anglers with bait actually land it, 0–1 (keeps rare predators from topping the list). */
+  shore: number
+  note: string
+  sources: string[]
+}
+
+const FB = 'FishBase (الأسماء التونسية)'
+const PET = 'pecheentunisie.com'
+const ALM = 'almlook.com'
+const MED = 'Mediterranean surfcasting guides'
+
+export const SPECIES: Species[] = [
+  {
+    id: 'qarous',
+    name: 'قاروص',
+    sci: 'Dicentrarchus labrax',
+    months: [0.8, 0.7, 0.8, 0.8, 0.6, 0.35, 0.25, 0.25, 0.6, 0.9, 1, 0.9],
+    temp: [8, 12, 20, 26],
+    sea: { calm: 0.3, moderate: 0.9, rough: 1 },
+    time: { fajr: 1, nhar: 0.4, maghreb: 1, lil: 0.9 },
+    bottom: { sand: 0.9, rock: 0.8, mixed: 1 },
+    baits: ['worm', 'sardine', 'crab', 'shrimp', 'squid', 'live'],
+    rig: 'sliding',
+    shore: 1,
+    note: 'يحب البحر المقلّب والماء المعكّر شويّة، خاصة بعد التقليبة وفي فم الوادي. الخريف هو موسمو الذهبي.',
+    sources: [FB, ALM, PET],
+  },
+  {
+    id: 'warata',
+    name: 'وراطة (جرّاف)',
+    sci: 'Sparus aurata',
+    months: [0.3, 0.25, 0.3, 0.45, 0.6, 0.7, 0.8, 0.85, 1, 1, 0.8, 0.5],
+    temp: [13, 18, 26, 29],
+    sea: { calm: 0.7, moderate: 1, rough: 0.5 },
+    time: { fajr: 0.9, nhar: 0.7, maghreb: 1, lil: 0.8 },
+    bottom: { sand: 0.8, rock: 0.7, mixed: 1 },
+    baits: ['crab', 'mussel', 'worm', 'shrimp'],
+    rig: 'sliding',
+    shore: 1,
+    note: 'تحب القبقوب والبلح. تاكل بشويّة وبعد تجبد قوي، خلّي الفران مرخوف.',
+    sources: [FB, MED],
+  },
+  {
+    id: 'menkous',
+    name: 'منكوس',
+    sci: 'Lithognathus mormyrus',
+    months: [0.3, 0.3, 0.4, 0.55, 0.8, 0.9, 1, 1, 0.9, 0.7, 0.5, 0.35],
+    temp: [14, 18, 27, 30],
+    sea: { calm: 0.6, moderate: 1, rough: 0.4 },
+    time: { fajr: 0.9, nhar: 0.8, maghreb: 1, lil: 0.7 },
+    bottom: { sand: 1, rock: 0.2, mixed: 0.6 },
+    baits: ['worm', 'shrimp'],
+    rig: 'twoHook',
+    shore: 1,
+    note: 'يحوم في الرملة قريب من الشط في الموجة الصغيرة. دود صغير وصنارة صغيرة، واللانسي موش لازم يكون بعيد.',
+    sources: [FB, MED],
+  },
+  {
+    id: 'ouarka',
+    name: 'ورقة (شرغو)',
+    sci: 'Diplodus sargus',
+    months: [0.8, 0.8, 0.8, 0.7, 0.6, 0.5, 0.5, 0.5, 0.7, 0.9, 1, 0.9],
+    temp: [11, 14, 23, 27],
+    sea: { calm: 0.4, moderate: 0.9, rough: 1 },
+    time: { fajr: 1, nhar: 0.6, maghreb: 1, lil: 0.7 },
+    bottom: { sand: 0.3, rock: 1, mixed: 0.9 },
+    baits: ['worm', 'crab', 'mussel', 'shrimp'],
+    rig: 'rock',
+    shore: 0.95,
+    note: 'قريب من الصخر وين الكشكوش (écume). كي البحر مقلّب ياكل خير.',
+    sources: [FB, PET],
+  },
+  {
+    id: 'baghla',
+    name: 'بغلة',
+    sci: 'Umbrina cirrosa',
+    months: [0.2, 0.2, 0.3, 0.4, 0.6, 0.8, 0.9, 1, 1, 0.8, 0.5, 0.3],
+    temp: [14, 18, 27, 30],
+    sea: { calm: 0.7, moderate: 1, rough: 0.5 },
+    time: { fajr: 0.7, nhar: 0.3, maghreb: 0.9, lil: 1 },
+    bottom: { sand: 1, rock: 0.3, mixed: 0.7 },
+    baits: ['worm', 'crab', 'shrimp'],
+    rig: 'sliding',
+    shore: 0.8,
+    note: 'حوت الليل في الرملة، خاصة كي الماء دافي. الدود الغليظ ولا القبقوب.',
+    sources: [FB, MED],
+  },
+  {
+    id: 'mourjane',
+    name: 'مرجان',
+    sci: 'Pagellus erythrinus / acarne',
+    months: [0.4, 0.4, 0.5, 0.6, 0.7, 0.8, 0.8, 0.8, 0.9, 0.8, 0.6, 0.5],
+    temp: [13, 16, 24, 28],
+    sea: { calm: 0.8, moderate: 0.9, rough: 0.4 },
+    time: { fajr: 0.6, nhar: 0.4, maghreb: 0.8, lil: 1 },
+    bottom: { sand: 0.6, rock: 0.6, mixed: 1 },
+    baits: ['worm', 'squid', 'sardine', 'shrimp'],
+    rig: 'twoHook',
+    shore: 0.8,
+    note: 'ياكل في الليل. الدود والكلمار مقصوص صغير.',
+    sources: [FB, MED],
+  },
+  {
+    id: 'bouri',
+    name: 'بوري',
+    sci: 'Mugilidae',
+    months: [0.6, 0.6, 0.7, 0.7, 0.8, 0.9, 0.9, 0.9, 0.9, 0.8, 0.7, 0.6],
+    temp: [10, 14, 28, 32],
+    sea: { calm: 1, moderate: 0.6, rough: 0.2 },
+    time: { fajr: 0.9, nhar: 0.9, maghreb: 0.8, lil: 0.3 },
+    bottom: { sand: 0.8, rock: 0.7, mixed: 0.8 },
+    baits: ['bread', 'worm'],
+    rig: 'float',
+    shore: 0.7,
+    note: 'في البحر الراكد، قريب من المواني وفم الوادي. خبز ولا عجينة بالفلوتور.',
+    sources: [FB, MED],
+  },
+  {
+    id: 'ghrab',
+    name: 'غراب',
+    sci: 'Sciaena umbra',
+    months: [0.3, 0.3, 0.4, 0.5, 0.7, 0.8, 0.9, 0.9, 0.9, 0.7, 0.5, 0.3],
+    temp: [14, 18, 26, 29],
+    sea: { calm: 0.8, moderate: 0.8, rough: 0.3 },
+    time: { fajr: 0.6, nhar: 0.2, maghreb: 0.8, lil: 1 },
+    bottom: { sand: 0.1, rock: 1, mixed: 0.7 },
+    baits: ['shrimp', 'crab', 'worm', 'squid'],
+    rig: 'rock',
+    shore: 0.65,
+    note: 'بين الصخر في الليل. القمبري الحي ولا القبقوب.',
+    sources: [FB, MED],
+  },
+  {
+    id: 'chabata',
+    name: 'شباطة',
+    sci: 'Lichia amia',
+    months: [0.1, 0.1, 0.2, 0.3, 0.5, 0.6, 0.7, 0.8, 1, 1, 0.6, 0.2],
+    temp: [16, 20, 27, 29],
+    sea: { calm: 0.6, moderate: 1, rough: 0.5 },
+    time: { fajr: 1, nhar: 0.5, maghreb: 1, lil: 0.3 },
+    bottom: { sand: 0.8, rock: 0.8, mixed: 0.9 },
+    baits: ['live', 'sardine'],
+    rig: 'liveBait',
+    shore: 0.55,
+    note: 'تجري ورا الحوت الصغير في الفجر والمغرب. حوتة حيّة ولا سردينة.',
+    sources: [FB, MED],
+  },
+  {
+    id: 'kannuta',
+    name: 'كنّوطة',
+    sci: 'Spondyliosoma cantharus',
+    months: [0.4, 0.5, 0.7, 0.8, 0.8, 0.6, 0.5, 0.5, 0.6, 0.6, 0.5, 0.4],
+    temp: [12, 15, 22, 26],
+    sea: { calm: 0.8, moderate: 0.9, rough: 0.4 },
+    time: { fajr: 0.8, nhar: 0.7, maghreb: 0.9, lil: 0.4 },
+    bottom: { sand: 0.3, rock: 0.9, mixed: 1 },
+    baits: ['worm', 'shrimp', 'mussel'],
+    rig: 'twoHook',
+    shore: 0.7,
+    note: 'قريب من الحشيش والصخر. صنارة صغيرة ودود.',
+    sources: [FB, MED],
+  },
+  {
+    id: 'congre',
+    name: 'كونقر (congre)',
+    sci: 'Conger conger',
+    months: [1, 1, 0.8, 0.6, 0.4, 0.3, 0.3, 0.3, 0.4, 0.6, 0.8, 1],
+    temp: [10, 12, 19, 24],
+    sea: { calm: 0.7, moderate: 0.9, rough: 0.6 },
+    time: { fajr: 0.4, nhar: 0.1, maghreb: 0.6, lil: 1 },
+    bottom: { sand: 0.2, rock: 1, mixed: 0.7 },
+    baits: ['sardine', 'squid'],
+    rig: 'nightBig',
+    shore: 0.75,
+    note: 'حوت الشتاء والليل في الصخر. طعم كبير وخيط غليظ.',
+    sources: [PET],
+  },
+  {
+    id: 'raie',
+    name: 'راي (raie)',
+    sci: 'Rajidae',
+    months: [1, 0.9, 0.8, 0.6, 0.4, 0.3, 0.3, 0.3, 0.4, 0.6, 0.8, 1],
+    temp: [10, 12, 20, 25],
+    sea: { calm: 0.8, moderate: 0.9, rough: 0.5 },
+    time: { fajr: 0.5, nhar: 0.2, maghreb: 0.6, lil: 1 },
+    bottom: { sand: 1, rock: 0.2, mixed: 0.6 },
+    baits: ['sardine', 'squid', 'worm'],
+    rig: 'nightBig',
+    shore: 0.7,
+    note: 'في الرملة في ليالي الشتاء. سردينة ولا كلمار.',
+    sources: [PET],
+  },
+]
