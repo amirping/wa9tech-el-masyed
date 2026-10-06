@@ -1,4 +1,4 @@
-import { SPOTS, type Spot } from '../data/spots'
+import { AREAS, SPOTS, type Area, type Spot, type SpotKind } from '../data/spots'
 import { SPECIES, type Species, type WindowId, type SeaState } from '../data/species'
 import { RIGS, sinkerFor, type BaitId, type RigId } from '../data/tackle'
 import type { Forecast, Hour, SpotSeries } from './api'
@@ -127,7 +127,10 @@ export interface WindowResult {
   sinker: string
   notes: Note[]
   cond: {
+    /** Waves where the angler stands (after jetty/port shelter). */
     effHs: number
+    /** Waves on the spot's open face. */
+    openHs: number
     hs: number
     tp: number
     wind: number
@@ -156,9 +159,18 @@ export interface SpotDay {
   afterStorm: boolean
 }
 
+export interface AreaDay {
+  area: Area
+  /** Spots in this area, best first. */
+  spots: SpotDay[]
+  best: SpotDay
+}
+
 export interface DayResult {
   date: string
   spots: SpotDay[]
+  /** Areas ranked by their best spot. */
+  areas: AreaDay[]
   best: SpotDay
   moon: MoonPhase
   majors: number[]
@@ -182,9 +194,36 @@ interface Context {
   ev: MoonEvents
 }
 
-function effHsAt(ctx: Context, i: number) {
+/** Wave height reaching the spot's open face. */
+function openHsAt(ctx: Context, i: number) {
   const h = ctx.hours[i]
   return h.hs * exposure(h.waveDir, ctx.spot.facing)
+}
+
+/** Share of the open-face waves felt where you actually fish: the lee of a jetty, or inside a port. */
+const SHELTER: Record<SpotKind, number> = { beach: 1, rocks: 1, mouth: 1, jetty: 0.6, port: 0.3 }
+
+/** Wave height where the angler stands. */
+function effHsAt(ctx: Context, i: number) {
+  return openHsAt(ctx, i) * SHELTER[ctx.spot.kind]
+}
+
+/** Too dangerous to fish, judged on the open face (waves break over jetties and rocks). */
+function isDanger(ctx: Context, i: number): boolean {
+  const h = ctx.hours[i]
+  if (h.gust >= 65 || THUNDER.has(h.code)) return true
+  const open = openHsAt(ctx, i)
+  switch (ctx.spot.kind) {
+    case 'port':
+      return false
+    case 'jetty':
+      return open >= 2 || (h.tp >= 10 && open >= 1.4)
+    case 'rocks':
+      // Rocks are less forgiving than sand: lower wave limit, and long swells throw surprise waves.
+      return open >= 1.8 || (h.tp >= 9 && open >= 1.2)
+    default:
+      return open >= 2.5
+  }
 }
 
 /** Sea was rough in the last 48 h and is now settling into fishable surf. */
@@ -210,6 +249,8 @@ function speciesFit(sp: Species, ctx: Context, i: number, win: WindowId, afterSt
   let f = sp.shore * sp.months[month] * tempFit(h.sst, sp.temp) * sp.bottom[ctx.spot.bottom] * sp.time[win] * sp.sea[state]
   if (afterStorm && ['qarous', 'warata', 'ouarka', 'menkous'].includes(sp.id)) f *= 1.15
   if (sp.id === 'qarous' && ctx.spot.estuary && rainLast(ctx, i, 72) > 8) f *= 1.25
+  // Local knowledge: fish known to be caught at this spot.
+  if (ctx.spot.fish?.includes(sp.id)) f *= 1.3
   return clamp(f)
 }
 
@@ -218,12 +259,14 @@ function rankFish(ctx: Context, i: number, win: WindowId, afterStorm: boolean): 
     .sort((a, b) => b.fit - a.fit)
 }
 
-function lightFactor(win: WindowId, h: Hour, effHs: number): number {
+function lightFactor(win: WindowId, h: Hour, effHs: number, lit = false): number {
   if (win === 'fajr' || win === 'maghreb') return 1
   if (win === 'nhar') return 0.55 + (h.cloud > 70 ? 0.2 : 0) + (effHs > 0.6 && effHs < 1.6 ? 0.15 : 0)
   // Night: a bright moon over calm, clear water makes fish wary.
   const { illum } = moonPhase(h.t)
-  return illum > 0.8 && h.cloud < 30 && effHs < 0.4 && moonUp(h.t) ? 0.75 : 0.85
+  if (illum > 0.8 && h.cloud < 30 && effHs < 0.4 && moonUp(h.t)) return 0.75
+  // Lit jetties and ports draw small fish at night, and the predators follow.
+  return lit ? 0.95 : 0.85
 }
 
 function scoreHour(ctx: Context, i: number, win: WindowId): HourScore {
@@ -239,16 +282,13 @@ function scoreHour(ctx: Context, i: number, win: WindowId): HourScore {
   const fishFit = clamp((0.75 * fish[0].fit + 0.25 * fish[1].fit) / 0.85)
 
   let score = 0.3 * sea + 0.18 * wind + 0.1 * pres + 0.12 * sol + 0.3 * fishFit
-  score *= lightFactor(win, h, effHs)
+  score *= lightFactor(win, h, effHs, ctx.spot.night)
   score *= phaseFactor(moonPhase(h.t).phase)
   if (h.rain > 10) score *= 0.4
   else if (h.rain > 4) score *= 0.7
   if (afterStorm) score += 0.08
 
-  // Rocks are less forgiving than sand: lower wave limit, and long swells throw surprise waves.
-  const rock = ctx.spot.bottom === 'rock'
-  const danger =
-    effHs >= (rock ? 1.8 : 2.5) || (rock && h.tp >= 9 && effHs >= 1.2) || h.gust >= 65 || THUNDER.has(h.code)
+  const danger = isDanger(ctx, i)
   if (danger) score = Math.min(score, 0.12)
   return { t: h.t, score: clamp(score), danger, effHs, window: win }
 }
@@ -288,6 +328,7 @@ function buildWindow(ctx: Context, span: WindowSpan, now: number): WindowResult 
   const windDir = circularMean(hs.map((h) => h.windDir))
   const cond: WindowResult['cond'] = {
     effHs,
+    openHs: avg(idxs.map((i) => openHsAt(ctx, i))),
     hs: avg(hs.map((h) => h.hs)),
     tp: avg(hs.map((h) => h.tp)),
     wind: avg(hs.map((h) => h.wind)),
@@ -362,13 +403,17 @@ function windowNotes(
 ): Note[] {
   const n: Note[] = []
   if (hs.some((h) => THUNDER.has(h.code))) n.push({ k: 'danger', t: 'عجاجة ورعد: ما تقعدش بالقصبة في الشط' })
-  else if (danger && ctx.spot.bottom === 'rock')
+  else if (danger && ctx.spot.kind === 'rocks')
     n.push({ k: 'danger', t: 'الموج قوي على الصخر: خطر، ما تطلعش للصخر اليوم' })
+  else if (danger && ctx.spot.kind === 'jetty')
+    n.push({ k: 'danger', t: 'الموج يطلع على الجطّي: خطر، ما تمشيش لطرفو' })
   else if (danger) n.push({ k: 'danger', t: 'البحر هايج برشا ولا الريح قوية: خطر، ما تمشيش' })
-  else if (ctx.spot.bottom !== 'sand' && (c.effHs >= 1 || c.tp >= 8))
+  else if ((ctx.spot.kind === 'rocks' || ctx.spot.kind === 'jetty') && (c.openHs >= 1 || c.tp >= 8))
     n.push({ k: 'rock', t: 'على الصخر: رد بالك من الموجة الكبيرة، ما تعطيش ظهرك للبحر' })
   n.push({ k: 'sea', t: `${seaText(c.effHs)} (موج ${c.effHs.toFixed(1)} م${c.tp ? ` كل ${Math.round(c.tp)} ثواني` : ''})` })
   if (afterStorm) n.push({ k: 'calm', t: 'البحر قاعد يهدا بعد التقليبة: الحوت يخرج ياكل' })
+  if (ctx.spot.kind === 'jetty' && !danger && c.openHs >= 1)
+    n.push({ k: 'calm', t: `برّا البحر هايج (${c.openHs.toFixed(1)} م)، أما ورا الجطّي محمي: صيد من الجنب المحمي` })
   const rel = c.windRel === 'on' ? 'جاية من البحر' : c.windRel === 'off' ? 'جاية من البر' : 'على الجنب'
   n.push({
     k: 'wind',
@@ -406,9 +451,16 @@ export function analyse(forecast: Forecast, now = Date.now(), days = 7): DayResu
       .sort((a, b) => b.score - a.score)
     const noon = localMidnight(date) + 12 * HOUR
     const start = localMidnight(date)
+    const areas = AREAS.map((area) => {
+      const inArea = spots.filter((s) => s.spot.area === area.id)
+      return { area, spots: inArea, best: inArea[0] }
+    })
+      .filter((a) => a.best)
+      .sort((a, b) => b.best.score - a.best.score)
     return {
       date,
       spots,
+      areas,
       best: spots[0],
       moon: moonPhase(noon),
       majors: ev.majors.filter((t) => t >= start && t < start + 24 * HOUR),

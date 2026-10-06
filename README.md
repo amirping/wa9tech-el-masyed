@@ -16,7 +16,7 @@ npm run build    # production build in dist/
 
 | File | What it holds |
 |---|---|
-| `src/data/spots.ts` | The 27 spots: coordinates, the bearing each beach faces, and the bottom type (sand, rock or mixed) |
+| `src/data/spots.ts` | Regions → areas → 64 spots. Each spot has coordinates, the bearing it faces, its type (beach, rocks, jetty, port, river mouth), bottom, and optional night/known-fish/note fields |
 | `src/data/species.ts` | Fish knowledge: Tunisian name, activity by month, water temperature, sea state, time of day, bottom, bait, rig |
 | `src/data/tackle.ts` | Bait and rig descriptions in darja, plus sinker weight by wave height |
 | `src/lib/score.ts` | The scoring engine (the weights are at the top of `scoreHour`) |
@@ -26,6 +26,17 @@ npm run build    # production build in dist/
 | `src/components/map.tsx` | Spot maps: Leaflet with OpenStreetMap tiles, plus Google Maps links for directions |
 
 To correct a fish name, a season or a bait, edit `species.ts`. Each entry lists its sources.
+
+## Adding or fixing a spot
+
+Edit `src/data/spots.ts`. Spots in the same area usually share one forecast grid cell, so what sets them apart is:
+
+- `facing`: the bearing the spot looks out to sea. It decides which swells and winds hit it.
+- `kind`: `beach`, `rocks`, `jetty` (its lee side gets 60% of the waves), `port` (30%) or `mouth`. Rocks and jetties have stricter danger limits.
+- `night: true`: lit or easy at night (scores better after dark).
+- `fish: ['warata', …]`: species known to be caught there (boosted, using the ids from `species.ts`).
+- `note`: a short tip in darja, shown on the spot page.
+- `approx: true`: coordinates placed by hand. The spot page then says the pin is approximate.
 
 ## How a day is scored
 

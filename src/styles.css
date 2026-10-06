@@ -405,3 +405,93 @@ button.btn { border: 0; cursor: pointer; font: inherit; font-weight: 700; }
 button.btn.ghost { border: 1.5px solid var(--line); }
 .dedication { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; color: var(--ink); font-weight: 500; }
 .dedication svg { color: var(--flare); flex: none; }
+
+/* ---------- search ---------- */
+.search { position: relative; margin-bottom: 12px; }
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 50px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  color: var(--ink-soft);
+}
+.search-box:focus-within { border-color: var(--deep); }
+.search-box input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 17px; color: var(--ink); }
+.search-box input::-webkit-search-cancel-button { display: none; }
+.search-clear { border: 0; background: transparent; color: var(--ink-soft); width: 36px; height: 36px; display: grid; place-items: center; cursor: pointer; }
+.search-hits {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  box-shadow: 0 10px 30px rgba(14, 42, 59, 0.12);
+}
+.search-hits a { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 48px; padding: 6px 10px; border-radius: 10px; }
+.search-hits a:hover, .search-hits a:focus-visible { background: var(--shoal); }
+.search-hits span { font-size: 14px; color: var(--ink-soft); }
+.search-none { padding: 12px; color: var(--ink-soft); font-size: 15px; }
+
+/* ---------- areas ---------- */
+.areas { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.area-card { background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; padding: 14px; }
+.area-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; margin-bottom: 8px; }
+.area-head h2 { font-size: 24px; }
+.area-region { font-size: 13px; color: var(--ink-soft); }
+.spot-row { display: block; }
+.spot-row.featured { background: transparent; border: 0; padding: 0; }
+.spot-top h3 { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 19px; }
+.area-more { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+.area-more summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--deep);
+}
+.area-more summary::-webkit-details-marker { display: none; }
+.area-more .chev { transition: transform 0.15s ease; }
+.area-more[open] .chev { transform: rotate(180deg); }
+.area-spots { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.area-spots .spot-row { background: var(--paper); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.area-spots .spot-best { margin-bottom: 0; }
+.dd-sub { display: block; font-size: 14px; font-weight: 500; color: var(--ink-soft); }
+
+.kind-rocks { background: color-mix(in srgb, #8e9ba3 30%, var(--card)); }
+.kind-jetty, .kind-port { background: color-mix(in srgb, var(--buoy) 28%, var(--card)); color: var(--ink); }
+.kind-mouth { background: color-mix(in srgb, #5fa9c0 30%, var(--card)); }
+
+/* ---------- favourites ---------- */
+.fav-mark { color: var(--buoy); flex: none; }
+.title-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.fav-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+}
+.fav-btn.on { background: var(--buoy); border-color: var(--buoy); color: #0e2a3b; }
+.empty { display: flex; gap: 8px; align-items: flex-start; padding: 14px; border-radius: 14px; background: var(--shoal); margin-bottom: 14px; }
+.empty svg { flex: none; color: var(--buoy-ink); margin-top: 3px; }
+
+/* ---------- spot page extras ---------- */
+.tip { display: flex; gap: 8px; align-items: flex-start; padding: 12px 14px; margin-bottom: 10px; border-radius: 14px; background: color-mix(in srgb, var(--buoy) 22%, var(--card)); font-weight: 500; }
+.tip svg { flex: none; margin-top: 2px; color: var(--buoy-ink); }
+.siblings { margin-top: 22px; }
+.siblings h2 { display: flex; align-items: center; gap: 8px; font-size: 20px; margin-bottom: 10px; color: var(--deep); }

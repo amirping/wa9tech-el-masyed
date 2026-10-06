@@ -1,6 +1,14 @@
 import { useState } from 'preact/hooks'
 import {
   IconAlertTriangle,
+  IconAnchor,
+  IconBuildingLighthouse,
+  IconBulb,
+  IconChevronDown,
+  IconDroplet,
+  IconMapPinQuestion,
+  IconStar,
+  IconStarFilled,
   IconArrowRight,
   IconBeach,
   IconBrandGoogleMaps,
@@ -21,9 +29,11 @@ import {
   IconWind,
   IconWindsock,
 } from '@tabler/icons-preact'
-import { REGIONS, type RegionId } from '../data/spots'
+import { KIND_NAMES, REGIONS, areaOf, regionOf, type RegionId, type SpotKind } from '../data/spots'
 import { BAITS, RIGS } from '../data/tackle'
-import type { DayResult, SpotDay, WindowResult } from '../lib/score'
+import type { AreaDay, DayResult, SpotDay, WindowResult } from '../lib/score'
+import { useFavs } from '../lib/favs'
+import { SpotSearch } from './search'
 import { compass, moonName, seaText, STAR_WORDS } from '../lib/text'
 import { dateLabel, dayLabel, fmtTime, weekday } from '../lib/time'
 import { Moon, Stars, Strip, WindArrow, range } from './bits'
@@ -31,22 +41,34 @@ import { BaitIcon, IconFishSide, IconWorm, NoteIcon, WindowIcon } from './icons'
 import { SpotMap, directionsUrl, googleMapsUrl } from './map'
 import { RigDiagram } from './rigs'
 
-/** A region, everything, or only spots with rocks to fish from (rock or mixed bottom). */
-export type Region = RegionId | 'all' | 'rocks'
+/** A region, everything, his favourites, or only spots with rocks to fish from. */
+export type Region = RegionId | 'all' | 'rocks' | 'favs'
 
-const inRegion = (s: SpotDay, r: Region) =>
-  r === 'all' || (r === 'rocks' ? s.spot.bottom !== 'sand' : s.spot.region === r)
+const inRegion = (s: SpotDay, r: Region, isFav: (id: string) => boolean) =>
+  r === 'all' ||
+  (r === 'favs' ? isFav(s.spot.id) : r === 'rocks' ? s.spot.bottom !== 'sand' : regionOf(s.spot) === r)
 const I = { size: 20, stroke: 2 }
 
 // ---------------- shared ----------------
 
 export function RegionChips({ value, onChange }: { value: Region; onChange: (r: Region) => void }) {
-  const opts: { id: Region; name: string }[] = [{ id: 'all', name: 'الكل' }, { id: 'rocks', name: 'فيها صخر' }, ...REGIONS]
+  const opts: { id: Region; name: string }[] = [
+    { id: 'all', name: 'الكل' },
+    { id: 'favs', name: 'بلايصي' },
+    { id: 'rocks', name: 'فيها صخر' },
+    ...REGIONS,
+  ]
   return (
     <nav class="chips" aria-label="الجهة">
       {opts.map((o) => (
         <button key={o.id} class="chip" aria-pressed={value === o.id} onClick={() => onChange(o.id)}>
-          {o.id === 'all' ? null : o.id === 'rocks' ? <IconMountain size={16} stroke={2} /> : <IconMapPin size={16} stroke={2} />}
+          {o.id === 'all' ? null : o.id === 'favs' ? (
+            <IconStarFilled size={16} class="fav-mark" />
+          ) : o.id === 'rocks' ? (
+            <IconMountain size={16} stroke={2} />
+          ) : (
+            <IconMapPin size={16} stroke={2} />
+          )}
           {o.name}
         </button>
       ))}
@@ -81,12 +103,15 @@ export function Home({ days, today, now, region, setRegion }: {
   region: Region
   setRegion: (r: Region) => void
 }) {
+  const favs = useFavs()
   return (
     <>
+      <SpotSearch date={today} />
       <RegionChips value={region} onChange={setRegion} />
+      {region === 'favs' && favs.size === 0 && <EmptyFavs />}
       <ol class="days">
         {days.map((d) => {
-          const best = d.spots.find((s) => inRegion(s, region))
+          const best = d.spots.find((s) => inRegion(s, region, favs.has))
           if (!best) return null
           const w = best.best
           return (
@@ -107,7 +132,10 @@ export function Home({ days, today, now, region, setRegion }: {
                     <dt>
                       <IconMapPin size={15} stroke={2} /> أحسن بلاصة
                     </dt>
-                    <dd>{best.spot.name}</dd>
+                    <dd>
+                      {best.spot.name}
+                      <span class="dd-sub">{areaOf(best.spot).name}</span>
+                    </dd>
                   </div>
                   <div>
                     <dt>
@@ -154,7 +182,11 @@ export function DayView({ day, today, now, region, setRegion }: {
   region: Region
   setRegion: (r: Region) => void
 }) {
-  const spots = day.spots.filter((s) => inRegion(s, region))
+  const favs = useFavs()
+  const areas = day.areas
+    .map((a) => ({ ...a, spots: a.spots.filter((s) => inRegion(s, region, favs.has)) }))
+    .filter((a) => a.spots.length)
+  const spots = areas.flatMap((a) => a.spots)
   const any = day.spots[0]
   return (
     <>
@@ -180,52 +212,117 @@ export function DayView({ day, today, now, region, setRegion }: {
           )}
         </ul>
       </header>
+      <SpotSearch date={day.date} />
       <RegionChips value={region} onChange={setRegion} />
-      <SpotMap
-        height={260}
-        points={spots.map((s) => ({
-          id: s.spot.id,
-          lat: s.spot.lat,
-          lon: s.spot.lon,
-          label: s.spot.name,
-          stars: s.stars,
-          href: `#/day/${day.date}/${s.spot.id}`,
-        }))}
-      />
-      <p class="map-hint">
-        <IconMapPin size={15} stroke={2} /> الرقم في كل بلاصة هو عدد النجوم. دزّ عليه باش تحلّ التفاصيل.
-      </p>
-      <ol class="spots">
-        {spots.map((s) => (
-          <li key={s.spot.id}>
-            <a class="spot-row" href={`#/day/${day.date}/${s.spot.id}`}>
-              <div class="spot-top">
-                <h2>
-                  {s.spot.name}
-                  {s.spot.bottom !== 'sand' && (
-                    <span class="badge">
-                      <IconMountain size={13} stroke={2} /> {s.spot.bottom === 'rock' ? 'صخر' : 'رملة وصخر'}
-                    </span>
-                  )}
-                </h2>
-                <Stars n={s.stars} />
-              </div>
-              <p class="spot-best">
-                {s.best.danger && (
-                  <strong class="warn">
-                    <IconAlertTriangle size={16} stroke={2} /> خطر
-                  </strong>
-                )}
-                <WindowIcon id={s.best.id} size={17} /> {s.best.name} <span class="time">{range(s.best.primeStart, s.best.primeEnd)}</span>
-                <span class="sep">·</span>
-                <IconRipple size={17} stroke={2} /> {seaText(s.best.cond.effHs)}
-              </p>
-              <Strip hours={s.strip} sunrise={s.sunrise} sunset={s.sunset} now={now} />
-            </a>
-          </li>
+      {spots.length ? (
+        <>
+          <SpotMap
+            height={260}
+            points={spots.map((s) => ({
+              id: s.spot.id,
+              lat: s.spot.lat,
+              lon: s.spot.lon,
+              label: `${s.spot.name} (${areaOf(s.spot).name})`,
+              stars: s.stars,
+              href: `#/day/${day.date}/${s.spot.id}`,
+            }))}
+          />
+          <p class="map-hint">
+            <IconMapPin size={15} stroke={2} /> الرقم في كل بلاصة هو عدد النجوم. دزّ عليه باش تحلّ التفاصيل.
+          </p>
+        </>
+      ) : (
+        <EmptyFavs />
+      )}
+      <ol class="areas">
+        {areas.map((a) => (
+          <AreaCard key={a.area.id} a={a} date={day.date} now={now} open={region === 'favs'} />
         ))}
       </ol>
     </>
+  )
+}
+
+function AreaCard({ a, date, now, open }: { a: AreaDay; date: string; now: number; open: boolean }) {
+  const best = a.spots[0]
+  const others = a.spots.slice(1)
+  return (
+    <li class="area-card">
+      <div class="area-head">
+        <div>
+          <p class="area-region">{REGIONS.find((r) => r.id === a.area.region)?.name}</p>
+          <h2>{a.area.name}</h2>
+        </div>
+        <Stars n={best.stars} />
+      </div>
+      <SpotRow s={best} date={date} now={now} featured />
+      {others.length > 0 && (
+        <details class="area-more" open={open}>
+          <summary>
+            <IconChevronDown size={18} stroke={2} class="chev" /> بلايص أخرى في {a.area.name} ({others.length})
+          </summary>
+          <ul class="area-spots">
+            {others.map((s) => (
+              <li key={s.spot.id}>
+                <SpotRow s={s} date={date} now={now} />
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </li>
+  )
+}
+
+function SpotRow({ s, date, now, featured }: { s: SpotDay; date: string; now: number; featured?: boolean }) {
+  const favs = useFavs()
+  return (
+    <a class={featured ? 'spot-row featured' : 'spot-row'} href={`#/day/${date}/${s.spot.id}`}>
+      <div class="spot-top">
+        <h3>
+          {favs.has(s.spot.id) && <IconStarFilled size={15} class="fav-mark" />}
+          {s.spot.name}
+          <KindBadge kind={s.spot.kind} />
+        </h3>
+        {!featured && <Stars n={s.stars} size="sm" />}
+      </div>
+      <p class="spot-best">
+        {s.best.danger && (
+          <strong class="warn">
+            <IconAlertTriangle size={16} stroke={2} /> خطر
+          </strong>
+        )}
+        <WindowIcon id={s.best.id} size={17} /> {s.best.name} <span class="time">{range(s.best.primeStart, s.best.primeEnd)}</span>
+        <span class="sep">·</span>
+        <IconRipple size={17} stroke={2} /> {seaText(s.best.cond.effHs)}
+      </p>
+      {featured && <Strip hours={s.strip} sunrise={s.sunrise} sunset={s.sunset} now={now} />}
+    </a>
+  )
+}
+
+export function KindIcon({ kind, size = 14 }: { kind: SpotKind; size?: number }) {
+  const p = { size, stroke: 2 }
+  if (kind === 'rocks') return <IconMountain {...p} />
+  if (kind === 'jetty') return <IconBuildingLighthouse {...p} />
+  if (kind === 'port') return <IconAnchor {...p} />
+  if (kind === 'mouth') return <IconDroplet {...p} />
+  return <IconBeach {...p} />
+}
+
+function KindBadge({ kind }: { kind: SpotKind }) {
+  return (
+    <span class={`badge kind-${kind}`}>
+      <KindIcon kind={kind} size={13} /> {KIND_NAMES[kind]}
+    </span>
+  )
+}
+
+function EmptyFavs() {
+  return (
+    <p class="empty">
+      <IconStar size={20} stroke={2} /> ما زلت ما اخترتش حتى بلاصة. حلّ بلاصة ودزّ على النجمة باش تزيدها لبلايصك.
+    </p>
   )
 }
 
@@ -233,17 +330,37 @@ export function DayView({ day, today, now, region, setRegion }: {
 
 export function SpotView({ day, spot, today, now }: { day: DayResult; spot: SpotDay; today: string; now: number }) {
   const [sel, setSel] = useState(spot.best.id)
+  const favs = useFavs()
   const w = spot.windows.find((x) => x.id === sel) ?? spot.best
   const { lat, lon } = spot.spot
+  const area = areaOf(spot.spot)
+  const fav = favs.has(spot.spot.id)
+  const siblings = day.areas.find((a) => a.area.id === area.id)?.spots.filter((s) => s.spot.id !== spot.spot.id) ?? []
   return (
     <>
       <BackBar href={`#/day/${day.date}`} label={`كل البلايص ${dayLabel(day.date, today)}`} />
       <header class="page-head">
-        <h1>{spot.spot.name}</h1>
+        <div class="title-row">
+          <h1>{spot.spot.name}</h1>
+          <button
+            class={fav ? 'fav-btn on' : 'fav-btn'}
+            onClick={() => favs.toggle(spot.spot.id)}
+            aria-pressed={fav}
+            aria-label={fav ? 'نحّيها من بلايصي' : 'زيدها لبلايصي'}
+          >
+            {fav ? <IconStarFilled size={22} /> : <IconStar size={22} stroke={2} />}
+            {fav ? 'من بلايصي' : 'زيدها'}
+          </button>
+        </div>
         <p class="muted icon-line">
-          {dayLabel(day.date, today)} {dateLabel(day.date)}
+          <IconMapPin size={18} stroke={2} /> {area.name}
           <span class="sep">·</span>
-          <IconBeach size={18} stroke={2} /> {bottomName(spot.spot.bottom)}
+          <KindIcon kind={spot.spot.kind} size={18} /> {KIND_NAMES[spot.spot.kind]}
+          <span class="sep">·</span>
+          {bottomName(spot.spot.bottom)}
+        </p>
+        <p class="muted">
+          {dayLabel(day.date, today)} {dateLabel(day.date)}
         </p>
         <div class="spot-score">
           <Stars n={spot.stars} size="lg" />
@@ -253,7 +370,17 @@ export function SpotView({ day, spot, today, now }: { day: DayResult; spot: Spot
       </header>
 
       <section class="place">
-        <SpotMap points={[{ id: spot.spot.id, lat, lon, label: spot.spot.name, stars: spot.stars }]} height={200} zoom={12} />
+        {spot.spot.note && (
+          <p class="tip">
+            <IconBulb size={20} stroke={2} /> {spot.spot.note}
+          </p>
+        )}
+        <SpotMap points={[{ id: spot.spot.id, lat, lon, label: spot.spot.name, stars: spot.stars }]} height={200} zoom={13} />
+        {spot.spot.approx && (
+          <p class="map-hint">
+            <IconMapPinQuestion size={15} stroke={2} /> البلاصة على الخريطة تقريبية.
+          </p>
+        )}
         <div class="place-actions">
           <a class="btn" href={directionsUrl(lat, lon)} target="_blank" rel="noopener">
             <IconNavigation {...I} /> الطريق
@@ -282,6 +409,21 @@ export function SpotView({ day, spot, today, now }: { day: DayResult; spot: Spot
       </div>
 
       <WindowDetail w={w} />
+
+      {siblings.length > 0 && (
+        <section class="siblings">
+          <h2>
+            <IconMapPin size={20} stroke={2} /> بلايص أخرى في {area.name}
+          </h2>
+          <ul class="area-spots">
+            {siblings.map((s) => (
+              <li key={s.spot.id}>
+                <SpotRow s={s} date={day.date} now={now} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </>
   )
 }

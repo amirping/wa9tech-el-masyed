@@ -4,6 +4,7 @@ import { analyse } from './lib/score'
 import { fmtTime, localDate } from './lib/time'
 import { IconClock, IconFishHook, IconHeart, IconRefresh, IconWifiOff } from '@tabler/icons-preact'
 import { ShareButton } from './components/share'
+import { FavsContext, useFavsState } from './lib/favs'
 import { DayView, Home, RigsView, SpotView, type Region } from './components/views'
 
 const REGION_KEY = 'masyed-region'
@@ -35,6 +36,7 @@ export function App() {
   const [error, setError] = useState(false)
   const [region, setRegionState] = useState<Region>(readRegion)
   const hash = useHash()
+  const favs = useFavsState()
 
   const setRegion = (r: Region) => {
     setRegionState(r)
@@ -71,6 +73,7 @@ export function App() {
   const spot = day && spotId ? day.spots.find((s) => s.spot.id === spotId) : undefined
 
   return (
+    <FavsContext.Provider value={favs}>
     <div class="shell">
       <header class="masthead">
         <a href="#/" class="brand">
@@ -133,5 +136,6 @@ export function App() {
         </p>
       </footer>
     </div>
+    </FavsContext.Provider>
   )
 }
